@@ -17,6 +17,7 @@ import tkinter
 import string
 import charts
 import random
+import customtools
 custom = {}
 
 configpath = "config.tgbot"
@@ -144,8 +145,7 @@ def badword(bot, update):
 
 def saveU(bot, update):
     tempstorage.append(update.message.reply_to_message)
-    update.message.reply_text("Saved")
-    
+    update.message.reply_text("Saved")   
 ##def saveS(bot, update):
 ##    tempstorage.append(update)
 ##    print("hi")
@@ -171,6 +171,8 @@ def customCommands(bot, update):
             elif command == "remove" and isadmin:
                 smol.delDB(update.message.chat_id, argslist[0])
                 update.message.reply_text("Removed %s" % argslist[0])
+            elif command == "commands":
+                update.message.reply_text(customtools.get_commands(update.message.chat_id))
             elif command in smol.getDB(update.message.chat_id):
                 if "photo" not in smol.getDB(update.message.chat_id)[command].keys():
                     update.message.reply_text(smol.getDB(update.message.chat_id)[command]["text"])
