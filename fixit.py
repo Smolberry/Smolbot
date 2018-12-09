@@ -1,7 +1,7 @@
 import os
 import pickle
 
-customdb = "C:/Users/andre/OneDrive/Desktop/Folders of Stuff/College/custom.tgbot"
+customdb = "custom.tgbot"
 
 def writeToDB(elements):
     if os.path.isfile(customdb):

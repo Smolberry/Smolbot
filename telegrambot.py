@@ -19,13 +19,13 @@ import charts
 import random
 custom = {}
 
-configpath = "C:/Users/andre/OneDrive/Desktop/Folders of Stuff/Bot/config.tgbot"
-usersconfigpath = "C:/Users/andre/OneDrive/Desktop/Folders of Stuff/Bot/userconfig.tgbot"
-customdb = "C:/Users/andre/OneDrive/Desktop/Folders of Stuff/Bot/custom.tgbot"
+configpath = "config.tgbot"
+usersconfigpath = "userconfig.tgbot"
+customdb = "custom.tgbot"
 canrun=False
 users = {}
 commandlist = []
-file = open("C:/Users/andre/OneDrive/Desktop/Folders of Stuff/Bot/badwords.txt", 'r')
+file = open("badwords.txt", 'r')
 badwords = []
 for i in file:
     badwords.append(i.replace("\n", ""))
