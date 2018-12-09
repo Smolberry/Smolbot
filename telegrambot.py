@@ -42,7 +42,7 @@ def writeToFile(elements):
         except:
             file.close()
     else:
-        file = open('wb+')
+        file = open(configpath, 'wb+')
         pickle.dump(elements, file)
         file.close()
         
