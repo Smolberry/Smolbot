@@ -34,7 +34,7 @@ def getDBFromFile():
 def makeIndent(text):
     result = ""
     if len(text) > 2:
-        for i in text[:-2]:
+        for i in text[:-1]:
             result += i + "\n" \
                       ""
         result += text[-1]
@@ -73,6 +73,7 @@ def get_all_commands():
         commandss = ""
         for u in list(commands[i].keys())[:-2]:
             commandss += u + ", "
+        
         commandlists.append(commandss)
         chatlist.append(str(i))
     return charts.makeChart("Commands For All Chats", chatlist, commandlists)
