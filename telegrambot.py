@@ -18,6 +18,8 @@ import string
 import charts
 import random
 import customtools
+import threading
+import time
 custom = {}
 
 configpath = "config.tgbot"
@@ -143,9 +145,9 @@ def badword(bot, update):
     random.shuffle(badwords)
     update.message.reply_text(badwords[0])
 
-def saveU(bot, update):
-    tempstorage.append(update.message.reply_to_message)
-    update.message.reply_text("Saved")   
+##def saveU(bot, update):
+##    tempstorage.append(update.message.reply_to_message)
+##    update.message.reply_text("Saved")   
 ##def saveS(bot, update):
 ##    tempstorage.append(update)
 ##    print("hi")
@@ -154,10 +156,12 @@ def saveU(bot, update):
 ##CUSTOM COMMANDS##
 
 def customCommands(bot, update):
+    #Gets chat administrators and puts them into adminlist
     admins = update.message.chat.get_administrators()
     adminlist = []
     for i in admins:
         adminlist.append(i.user.username)
+    #If there is text
     if update.message.text != None:
         txt = update.message.text[1:]
         command, args, argslist = txt.split(' ')[0], ' '.join(txt.split(' ')[1:]), txt.split(' ')[1:]
@@ -174,20 +178,25 @@ def customCommands(bot, update):
             elif command == "commands":
                 update.message.reply_text(customtools.get_commands(update.message.chat_id))
             elif command in smol.getDB(update.message.chat_id):
+                #Check if it's a photo (always skips this bc I'm too lazy to fix it)
                 if "photo" not in smol.getDB(update.message.chat_id)[command].keys():
                     update.message.reply_text(smol.getDB(update.message.chat_id)[command]["text"])
                 else:
+                    #If there is text send with text
                     if smol.getDB(update.message.chat_id)[command]["text"] != None:
                         update.message.reply_photo(smol.getDB(update.message.chat_id)[command]["photo"], smol.getDB(update.message.chat_id)[command]["text"])
                     else:
                         update.message.reply_photo(smol.getDB(update.message.chat_id)[command]["photo"])
+    #No text, assume it is media
     else:
+        #Omitting the "!" in txt
         txt = update.message.caption[1:]
         if len(txt.split(" ")) > 1:
             command, args, argslist = txt.split(' ')[0], ' '.join(txt.split(' ')[1:]), txt.split(' ')[1:]
         else:
             command, args, argslist = txt.split(' ')[0], None, None
         isadmin = False
+        #Don't run if in private messages
         if update.message.chat.type != "private":
             if update.message.from_user.username in adminlist:
                 isadmin = True
@@ -200,12 +209,17 @@ def customCommands(bot, update):
             elif command == "remove" and isadmin:
                 smol.delDB(update.message.chat_id, argslist[0])
                 update.message.reply_text("Removed %s" % argslist[0])
+            #No one is going to run a command with a picture
             else:
                 pass
 #End of commands
 
+##Message filter
+
 class Detect(BaseFilter):
     def filter(self, message):
+        if "!" in message.text[0] or "/" in message.text[0]: 
+            smol.sendToGUI(message)
         if message.text != None:
             return '!' in message.text[0]
         elif message.caption != None:
@@ -213,12 +227,14 @@ class Detect(BaseFilter):
         else:
             return False
 
+
 ###BOT###
 class MainStuff(telegram.Bot):
     def __init__(self):
         
         self.__variables = getFromFile()
         self.__users = getUsersFromFile()
+        self.isgui = False
         if "token" in self.__variables.keys():
             self.__token1 = self.__variables["token"]
             canrun=True
@@ -238,6 +254,8 @@ class MainStuff(telegram.Bot):
                 #Handling custom commands
                 self.__customdb = getDBFromFile()
                 self.cute = Detect()
+##                self.__feed = GuiFeed()
+##                self.__guifeed = MessageHandler(self.__feed, self.sendToGUI)
                 self.thingy = MessageHandler(self.cute, customCommands)
                 #Actual commands
                 self.__dispatcher.add_handler(self.thingy)
@@ -249,7 +267,6 @@ class MainStuff(telegram.Bot):
                 commandlist.append(CommandHandler('users', getUsersCh))
                 commandlist.append(CommandHandler('aggro', badword))
 ##                commandlist.append(CommandHandler('save', saveU))
-    ##            commandlist.append(CommandHandler('stop', stop))
                 for i in commandlist:
                     self.__dispatcher.add_handler(i)
                 self.__updater.start_polling()
@@ -336,51 +353,102 @@ class MainStuff(telegram.Bot):
             writeToDB(self.__customdb)
         else:
             print("Tried to delete a command that wasn't present %s" % id)
+
+
+    #Sends messages to the gui
+    def sendToGUI(self, message):
+        if self.isgui:
+            self.gui.receive(message)
+    #Receives GUI object, stores it in self.gui
+    def initiateGUI(self, gui):
+        self.isgui = True
+        self.gui = gui
+        return True
+
+    #deletes the gui and no longer sens stuff there
+    def deGUI(self):
+        self.isgui = False
+        del self.gui
 #GUI
-class TehGUI:
-    def __init__(self):
+#Established as a thread so the bot can still be mucked around with in the command line
+class TehGUI(threading.Thread):
+    def run(self):
         self.__window = tkinter.Tk()
+        self.root = self.__window
+        self.__window.title("Smolbot")
+        self.__window.geometry("500x200")
+        self.__window.resizable(0, 0)
+        self.__sep = tkinter.Toplevel(self.__window)
         self.__topframe =tkinter.Frame(self.__window)
         self.__midframe = tkinter.Frame(self.__window)
         self.__botframe = tkinter.Frame(self.__window)
-        self.__startstop = tkinter.Frame(self.__window)
-        self.__radio_var = tkinter.IntVar()
-        self.__radio_var.set(1)
-        self.__radio_buttons = []
+
+        self.__scrollbar = tkinter.Scrollbar(self.__botframe, orient=tkinter.VERTICAL)
+        self.__listb = tkinter.Listbox(self.__botframe, yscrollcommand=self.__scrollbar.set)
+        self.__scrollbar.config(command=self.__listb.yview)
         self.__entry1 = tkinter.Entry(self.__topframe)
         self.__button2 = tkinter.Button(self.__topframe, text="Send", command=self.send)
-##        self.__button1 = tkinter.Button(self.__midframe, text="Refresh", command=self.refresh)
-        self.__stopbotb = tkinter.Button(self.__startstop, text="Stop", command=self.stopbot)
+        self.__stopbotb = tkinter.Button(self.__botframe, text="Stop", command=self.stopbot)
+
+
+        #Second window
+
+        self.chat = tkinter.StringVar()
+        self.__label = tkinter.Label(self.__sep, textvariable=self.chat)
+        self.__initiate = tkinter.Button(self.__topframe, text="Chat", command=self.initiateGUI)
         self.__buttonre = {}
         counter = 1
-        #Creates as many radio buttons as there are users
         for i in smol.get_users().keys():
             newuser = ""
             for u in smol.get_users()[i]["username"]:
                 if u in string.printable:
                     newuser+=u
-            self.__radio_buttons.append(tkinter.Radiobutton(self.__botframe, text=newuser, variable=self.__radio_var, value = counter))
-            self.__buttonre[counter] = i
-            counter += 1
-
+            self.__buttonre[newuser] = i
+            self.__listb.insert(tkinter.END, newuser) 
         self.__button2.pack(side="left")
         self.__entry1.pack(side="left")
-        if len(self.__radio_buttons) > 0:
-            for i in self.__radio_buttons:
-                i.pack(side="left")
-        self.__stopbotb.pack()
-        self.__topframe.pack()
-        self.__midframe.pack()
-        self.__botframe.pack()
-        self.__startstop.pack()
+        self.__initiate.pack(side="left")
+        
+        self.__scrollbar.pack(side=tkinter.RIGHT, fill=tkinter.Y)
+        self.__listb.pack(side=tkinter.RIGHT, fill=tkinter.BOTH, expand=1)
+        self.__stopbotb.pack(side=tkinter.BOTTOM)
+        self.__topframe.pack(side=tkinter.LEFT)
+        self.__midframe.pack(side=tkinter.LEFT)
+        self.__botframe.pack(side=tkinter.RIGHT)
+
+        #Second
+        self.__label.pack(side=tkinter.LEFT,fill=tkinter.BOTH, expand=1)
         tkinter.mainloop()
+
+
     def send(self):
-        smol.sendMessage(self.__buttonre[self.__radio_var.get()], text=self.__entry1.get())
+##        smol.sendMessage(self.__buttonre[self.__radio_var.get()], text=self.__entry1.get())
+        smol.sendMessage(self.__buttonre[self.__listb.get(tkinter.ACTIVE)], text=self.__entry1.get())
     def stopbot(self):
         smol.get_updater().stop()
         self.__window.destroy()
+    def receive(self, message):
+        thechat = self.chat.get()
+        newchat = "%s: %s" % (message.from_user.username, message.text) + "\n"
+        self.chat.set(thechat+newchat)
+    #Sends GUI Object
+    def initiateGUI(self):
+        smol.initiateGUI(self)
+    #Currently only command-line gui.deGUI()
+    def deGUI(self):
+        smol.deGUI()
+    #Also currently only command-line
+    def announce(self, message):
+        counter = 5
+        for i in smol.get_users().keys()
+            if counter > 5:
+                counter = 0
+                time.sleep(20)
+            smol.sendMessage(i, text=messsage)
+            
 
 smol = MainStuff()
 
 #Uncomment if you want a crappy GUI
-##gui = TehGUI()
+gui = TehGUI()
+gui.start()
