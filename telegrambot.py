@@ -14,6 +14,7 @@ import os
 global updater
 import wiki_thing
 import tkinter
+import tkinter.messagebox as messagebox
 import string
 import charts
 import random
@@ -218,8 +219,9 @@ def customCommands(bot, update):
 
 class Detect(BaseFilter):
     def filter(self, message):
-        if "!" in message.text[0] or "/" in message.text[0]: 
-            smol.sendToGUI(message)
+        if message.text != None:
+            if "!" in message.text[0] or "/" in message.text[0]: 
+                smol.sendToGUI(message)
         if message.text != None:
             return '!' in message.text[0]
         elif message.caption != None:
@@ -389,13 +391,14 @@ class TehGUI(threading.Thread):
         self.__entry1 = tkinter.Entry(self.__topframe)
         self.__button2 = tkinter.Button(self.__topframe, text="Send", command=self.send)
         self.__stopbotb = tkinter.Button(self.__botframe, text="Stop", command=self.stopbot)
+        self.__getusersb = tkinter.Button(self.__botframe, text="Get Users", command=self.getUsers)
 
 
         #Second window
 
         self.chat = tkinter.StringVar()
         self.__label = tkinter.Label(self.__sep, textvariable=self.chat)
-        self.__initiate = tkinter.Button(self.__topframe, text="Chat", command=self.initiateGUI)
+        self.__initiate = tkinter.Button(self.__topframe, text="Show Chat", command=self.initiateGUI)
         self.__buttonre = {}
         counter = 1
         for i in smol.get_users().keys():
@@ -404,10 +407,12 @@ class TehGUI(threading.Thread):
                 if u in string.printable:
                     newuser+=u
             self.__buttonre[newuser] = i
-            self.__listb.insert(tkinter.END, newuser) 
+            self.__listb.insert(tkinter.END, newuser)
+        self.__listb.insert(tkinter.END, "All")
         self.__button2.pack(side="left")
         self.__entry1.pack(side="left")
         self.__initiate.pack(side="left")
+        self.__getusersb.pack(side="bottom")
         
         self.__scrollbar.pack(side=tkinter.RIGHT, fill=tkinter.Y)
         self.__listb.pack(side=tkinter.RIGHT, fill=tkinter.BOTH, expand=1)
@@ -423,7 +428,10 @@ class TehGUI(threading.Thread):
 
     def send(self):
 ##        smol.sendMessage(self.__buttonre[self.__radio_var.get()], text=self.__entry1.get())
-        smol.sendMessage(self.__buttonre[self.__listb.get(tkinter.ACTIVE)], text=self.__entry1.get())
+        if self.__listb.get(tkinter.ACTIVE) == "All":
+            self.announce(self.__entry1.get())
+        else:
+            smol.sendMessage(self.__buttonre[self.__listb.get(tkinter.ACTIVE)], text=self.__entry1.get())
     def stopbot(self):
         smol.get_updater().stop()
         self.__window.destroy()
@@ -433,6 +441,7 @@ class TehGUI(threading.Thread):
         self.chat.set(thechat+newchat)
     #Sends GUI Object
     def initiateGUI(self):
+        self.chat.set("started at %s" % time.strftime(format("%c")))
         smol.initiateGUI(self)
     #Currently only command-line gui.deGUI()
     def deGUI(self):
@@ -440,11 +449,22 @@ class TehGUI(threading.Thread):
     #Also currently only command-line
     def announce(self, message):
         counter = 5
-        for i in smol.get_users().keys()
+        for i in list(smol.get_users().keys()):
             if counter > 5:
                 counter = 0
                 time.sleep(20)
-            smol.sendMessage(i, text=messsage)
+            smol.sendMessage(i, text=message)
+##            print(i, message)
+    def getUsers(self):
+        names = []
+        ids = []
+        for i in smol.get_users().keys():
+            if smol.get_users()[i]["chatobj"].type == "private":
+                names.append("@"+smol.get_users()[i]["chatobj"].username)
+            else:
+                names.append(smol.get_users()[i]["chatobj"].title)
+            ids.append(str(smol.get_users()[i]["chatobj"].id))
+        messagebox.showinfo("Users", charts.makeChart("Users", names, ids))
             
 
 smol = MainStuff()
